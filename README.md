@@ -8,13 +8,9 @@ This addon provides a streamlined interface for listing, filtering, and linking 
 - Mark favorite recipes and filter them  
 - Streamline your crafting experience  
 
----
-
 ## Turtle WoW Fix
 
 **Turtle WoW** displays more visible rows in the profession window (e.g., 23), whereas the original addon only accounted for 8. This mismatch caused right-click (to favorite) and left-click (to select) to fail beyond the first few items.  
-
----
 
 ## Usage
 
@@ -23,13 +19,9 @@ This addon provides a streamlined interface for listing, filtering, and linking 
 - **Hold ALT** to temporarily show all recipes (bypassing your favorites filter).  
 - **Use the “Mats” button** to filter by recipes you can craft immediately with on-hand reagents.
 
----
-
 ## Credits
 
 - **Original Author**: [shirsig](https://github.com/shirsig/crafty)  
   - The original Crafty was designed for 1.12 (Vanilla) and has been adapted for Turtle WoW.  
-
----
 
 Happy Crafting!
