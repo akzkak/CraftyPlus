@@ -1,0 +1,9 @@
+## Interface: 11200
+## Author: shirsig, updated by Paduk
+## Title: CraftyPlus
+## Notes: Enhanced profession window extension
+## Version: 1.1
+## LoadOnDemand: 1
+## LoadWith: Blizzard_TradeSkillUI, Blizzard_CraftUI
+## SavedVariablesPerCharacter: craftyplus_favorites
+craftyplus.lua

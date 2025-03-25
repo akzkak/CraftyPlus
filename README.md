@@ -1,21 +1,35 @@
-# crafty - WoW 1.12 addOn 
+# CraftyPlus (Classic WoW 1.12 Addon)
 
-Crafty adds a **fuzzy name search** to the default profession frames. Search results update on the fly and the first result (best match) is selected automatically.
+This addon provides a streamlined interface for listing, filtering, and linking your professions. Originally developed by **[shirsig](https://github.com/shirsig/crafty)** for Vanilla (1.12), CraftyPlus allows you to:
 
-Craftable reagents inherit the match ranking of the crafts they're used for, recursively, and are listed directly after them. This is especially useful for Engineering which has lots of sub-crafts. Example in the image below: Heavy Blasting Powder doesn't match the hedyn filter but inherits the ranking of Heavy Dynamite.
+- Quickly search for recipes or reagents  
+- Filter by materials on hand  
+- Easily link materials in chat  
+- Mark favorite recipes and filter them  
+- Streamline your crafting experience  
 
-It also adds an **material filter button** as well as a **reagent link button**.
+---
 
-### Link button functionality
-**\<Left Click>** Link the mats for the selected craft to party or /r if not in a party.
+## Turtle WoW Fix
 
-**\<Right Click>** Open a popup for entering a character name or channel (g, guild, p, party, ra, bg etc.) to link to.
+**Turtle WoW** displays more visible rows in the profession window (e.g., 23), whereas the original addon only accounted for 8. This mismatch caused right-click (to favorite) and left-click (to select) to fail beyond the first few items.  
 
-## Favorites
-**\<Right Click>** On skills adds them to or removes them from your favorites. If the favorites aren't empty they are displayed instead of the complete listing when no filter is applied.
-To see the full listing when you have favorites hold down the ALT key.
+---
 
-### Other
-**\<Shift Click>** Copy chat names into the link popup editbox.
+## Usage
 
-![Alt text](http://i.imgur.com/ylCttdk.png)
+- **Open a profession window** (e.g., Blacksmithing) to see Crafty’s search bar and filtering buttons.  
+- **Right-click** on a recipe in the list to favorite/unfavorite it.  
+- **Hold ALT** to temporarily show all recipes (bypassing your favorites filter).  
+- **Use the “Mats” button** to filter by recipes you can craft immediately with on-hand reagents.
+
+---
+
+## Credits
+
+- **Original Author**: [shirsig](https://github.com/shirsig/crafty)  
+  - The original Crafty was designed for 1.12 (Vanilla) and has been adapted for Turtle WoW.  
+
+---
+
+Happy Crafting!
