@@ -2,6 +2,8 @@
 
 ![WoW_26-03-25 (6)](https://github.com/user-attachments/assets/2c4451f3-06af-449d-9dc6-f52d3ea80943)
 
+CraftyPlus-default_ui_skin.rar contains the old original theme with only the turtle fix implemented.
+![WoW_26-03-25 (3)](https://github.com/user-attachments/assets/d45dc1be-72b8-4882-a9eb-6c9340b160be)
 
 This addon provides a streamlined interface for listing, filtering, and linking your professions. Originally developed by **[shirsig](https://github.com/shirsig/crafty)** for Vanilla (1.12), CraftyPlus allows you to:
 
