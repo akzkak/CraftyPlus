@@ -777,61 +777,65 @@ end
 --   2) One or more lines for reagents (with "(cont.)" prefix if split)
 -----------------------------------------------------------------------
 function craftyplus:SendReagentMessage(channel, who)
-	local index = (self.mode == CRAFT and GetCraftSelectionIndex() or GetTradeSkillSelectionIndex())
-	if index == 0 then
-		return
-	end
+    -- Get the correct index depending on the mode (CRAFT or TRADESKILL)
+    local index = (self.mode == CRAFT and GetCraftSelectionIndex() or GetTradeSkillSelectionIndex())
+    if index == 0 then
+        return
+    end
 
-	local itemLink = (self.mode == CRAFT and GetCraftItemLink(index) or GetTradeSkillItemLink(index))
-	if not itemLink then
-		return
-	end
+    -- Retrieve the item link based on the mode selected
+    local itemLink = (self.mode == CRAFT and 
+        GetCraftItemLink(index) or GetTradeSkillItemLink(index))
+    if not itemLink then
+        return
+    end
 
-	-- First message: just the item link
-	SendChatMessage(itemLink.."", channel, GetDefaultLanguage'player', who)
+    -- First message: send the item link with the " Required Reagents:" suffix.
+    SendChatMessage(itemLink .. " Required Reagents:", channel,
+        GetDefaultLanguage("player"), who)
 
-	-- Build reagent lines
-	local reagentsLine = ''
-	local inContinuation = false
-	local messages = {}
-	local reagentCount = (self.mode == CRAFT and GetCraftNumReagents(index) or GetTradeSkillNumReagents(index))
+    -- Build the reagent lines. Each reagent will be concatenated as "reagentLinkxneeded".
+    local reagentsLine = ""
+    local messages = {}
+    local reagentCount = (self.mode == CRAFT and GetCraftNumReagents(index) or
+        GetTradeSkillNumReagents(index))
 
-	for i = 1, reagentCount do
-		local reagentLink, _, needed
-		if self.mode == CRAFT then
-			reagentLink = GetCraftReagentItemLink(index, i)
-			_, _, needed = GetCraftReagentInfo(index, i)
-		else
-			reagentLink = GetTradeSkillReagentItemLink(index, i)
-			_, _, needed = GetTradeSkillReagentInfo(index, i)
-		end
+    for i = 1, reagentCount do
+        local reagentLink, _, needed
+        if self.mode == CRAFT then
+            reagentLink = GetCraftReagentItemLink(index, i)
+            _, _, needed = GetCraftReagentInfo(index, i)
+        else
+            reagentLink = GetTradeSkillReagentItemLink(index, i)
+            _, _, needed = GetTradeSkillReagentInfo(index, i)
+        end
 
-		if not reagentLink or not needed then
-			return
-		end
+        if not reagentLink or not needed then
+            return
+        end
 
-		local nextChunk = reagentLink..'x'..needed
-		local testLine = (reagentsLine == '' and nextChunk) or (reagentsLine..' '..nextChunk)
+        local nextChunk = reagentLink .. "x" .. needed
+        local testLine = (reagentsLine == "" and nextChunk) or 
+            (reagentsLine .. " " .. nextChunk)
 
-		-- If adding nextChunk exceeds chat limit, push current line first
-		if strlen(testLine) > 255 then
-			table.insert(messages, (inContinuation and '(cont.) ' or '')..reagentsLine)
-			reagentsLine = nextChunk
-			inContinuation = true
-		else
-			reagentsLine = testLine
-		end
-	end
+        -- Check if adding nextChunk exceeds the chat message limit.
+        if strlen(testLine) > 255 then
+            table.insert(messages, reagentsLine)
+            reagentsLine = nextChunk
+        else
+            reagentsLine = testLine
+        end
+    end
 
-	-- Flush any remaining reagents
-	if reagentsLine ~= '' then
-		table.insert(messages, (inContinuation and '(cont.) ' or '')..reagentsLine)
-	end
+    -- Flush any remaining reagents.
+    if reagentsLine ~= "" then
+        table.insert(messages, reagentsLine)
+    end
 
-	-- Send all reagent lines
-	for _, line in ipairs(messages) do
-		SendChatMessage(line, channel, GetDefaultLanguage'player', who)
-	end
+    -- Send each reagent line as a separate chat message.
+    for _, line in ipairs(messages) do
+        SendChatMessage(line, channel, GetDefaultLanguage("player"), who)
+    end
 end
 
 -----------------------------------------------------------------------
