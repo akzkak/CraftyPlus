@@ -1,5 +1,8 @@
 # CraftyPlus (Classic WoW 1.12 Addon)
 
+![WoW_26-03-25 (6)](https://github.com/user-attachments/assets/2c4451f3-06af-449d-9dc6-f52d3ea80943)
+
+
 This addon provides a streamlined interface for listing, filtering, and linking your professions. Originally developed by **[shirsig](https://github.com/shirsig/crafty)** for Vanilla (1.12), CraftyPlus allows you to:
 
 - Quickly search for recipes or reagents  

@@ -1,0 +1,288 @@
+<!-- CraftyPlus.xml -->
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/ ..\FrameXML\UI.xsd">
+    <!-- pfUI-style button template with gold border highlight on hover -->
+    <Button name="CraftyPlusPfButtonTemplate" virtual="true">
+        <Size>
+            <AbsDimension x="52" y="20"/>
+        </Size>
+        <!-- Remove default textures for flat look -->
+        <NormalTexture/>
+        <PushedTexture/>
+        <DisabledTexture/>
+        <!-- Custom backdrop for pfUI-like appearance with flat background -->
+        <Backdrop bgFile="Interface\Buttons\WHITE8x8" edgeFile="Interface\Tooltips\UI-Tooltip-Border" tile="true">
+            <BackgroundInsets>
+                <AbsInset left="2" right="2" top="2" bottom="2"/>
+            </BackgroundInsets>
+            <TileSize>
+                <AbsValue val="16"/>
+            </TileSize>
+            <EdgeSize>
+                <AbsValue val="8"/>
+            </EdgeSize>
+            <Color r="0.1" g="0.1" b="0.1" a="1.0"/>
+            <BorderColor r="0.3" g="0.3" b="0.3" a="1.0"/>
+        </Backdrop>
+        <!-- Button text -->
+        <Layers>
+            <Layer level="OVERLAY">
+                <FontString name="$parentText" inherits="GameFontNormal">
+                    <Anchors>
+                        <Anchor point="CENTER"/>
+                    </Anchors>
+                    <Color r="1.0" g="0.82" b="0.0"/>
+                </FontString>
+            </Layer>
+        </Layers>
+        <Scripts>
+            <OnEnter>
+                -- Show gold border on hover (using simple backdrop for now)
+                this:SetBackdropBorderColor(1.0, 0.82, 0.0, 1.0)
+                
+                -- Change text color to white on hover
+                local text = getglobal(this:GetName().."Text");
+                if text then
+                    text:SetTextColor(1.0, 1.0, 1.0);
+                end
+            </OnEnter>
+            <OnLeave>
+                -- Reset border color when not hovering
+                this:SetBackdropBorderColor(0.3, 0.3, 0.3, 1.0)
+                
+                -- Reset text color to gold when not hovering
+                local text = getglobal(this:GetName().."Text");
+                if text then
+                    text:SetTextColor(1.0, 0.82, 0.0);
+                end
+            </OnLeave>
+            <OnMouseDown>
+                -- CraftyPlusPfButtonTemplate:OnMouseDown
+                -- Move text slightly for click feedback
+                local text = getglobal(this:GetName().."Text");
+                if text then
+                    text:ClearAllPoints();
+                    text:SetPoint("CENTER", this, "CENTER", 1, -1);
+                end
+            </OnMouseDown>
+            <OnMouseUp>
+                -- CraftyPlusPfButtonTemplate:OnMouseUp
+                -- Reset text position
+                local text = getglobal(this:GetName().."Text");
+                if text then
+                    text:ClearAllPoints();
+                    text:SetPoint("CENTER", this, "CENTER", 0, 0);
+                end
+                
+                -- Keep highlight if still hovering
+                if MouseIsOver(this) then
+                    this:SetBackdropBorderColor(1.0, 0.82, 0.0, 1.0)
+                    -- Keep text white if still hovering
+                    text:SetTextColor(1.0, 1.0, 1.0);
+                end
+            </OnMouseUp>
+        </Scripts>
+    </Button>
+
+    <!-- Custom flat editbox template with minimalist border -->
+    <EditBox name="CraftyPlusEditBoxTemplate" virtual="true" autoFocus="false">
+        <Backdrop bgFile="Interface\Buttons\WHITE8x8" edgeFile="Interface\Tooltips\UI-Tooltip-Border" tile="true">
+            <BackgroundInsets>
+                <AbsInset left="2" right="2" top="2" bottom="2"/>
+            </BackgroundInsets>
+            <TileSize>
+                <AbsValue val="16"/>
+            </TileSize>
+            <EdgeSize>
+                <AbsValue val="8"/>
+            </EdgeSize>
+            <Color r="0.1" g="0.1" b="0.1" a="1.0"/>
+            <BorderColor r="0.3" g="0.3" b="0.3" a="1.0"/>
+        </Backdrop>
+        <TextInsets>
+            <AbsInset left="20" right="20" top="0" bottom="0"/>
+        </TextInsets>
+        <FontString inherits="GameFontHighlight"/>
+        <Scripts>
+            <OnEscapePressed>
+                this:ClearFocus();
+            </OnEscapePressed>
+            <OnEditFocusGained>
+                this:SetBackdropBorderColor(1.0, 0.82, 0.0, 1.0);
+            </OnEditFocusGained>
+            <OnEditFocusLost>
+                this:SetBackdropBorderColor(0.3, 0.3, 0.3, 1.0);
+            </OnEditFocusLost>
+        </Scripts>
+    </EditBox>
+
+    <!-- Main frame for CraftyPlus -->
+    <Frame name="CraftyPlusFrame" parent="UIParent" hidden="true" movable="false" enableMouse="true" frameStrata="MEDIUM">
+        <Size>
+            <AbsDimension x="322" y="45"/>
+        </Size>
+        <Anchors>
+            <Anchor point="CENTER" relativeTo="UIParent" relativePoint="CENTER">
+                <Offset>
+                    <AbsDimension x="0" y="0"/>
+                </Offset>
+            </Anchor>
+        </Anchors>
+        <!-- Updated to match button style -->
+        <Backdrop bgFile="Interface\Buttons\WHITE8x8" edgeFile="Interface\Tooltips\UI-Tooltip-Border" tile="true">
+            <BackgroundInsets>
+                <AbsInset left="2" right="2" top="2" bottom="2"/>
+            </BackgroundInsets>
+            <TileSize>
+                <AbsValue val="16"/>
+            </TileSize>
+            <EdgeSize>
+                <AbsValue val="8"/>
+            </EdgeSize>
+            <Color r="0.1" g="0.1" b="0.1" a="1.0"/>
+            <BorderColor r="0.3" g="0.3" b="0.3" a="1.0"/>
+        </Backdrop>
+        <Frames>
+            <!-- Search Box (now using custom template) -->
+            <EditBox name="CraftyPlusSearchBox" inherits="CraftyPlusEditBoxTemplate">
+                <Size>
+                    <AbsDimension x="184" y="20"/>
+                </Size>
+                <Anchors>
+                    <Anchor point="LEFT" relativeTo="$parent" relativePoint="LEFT">
+                        <Offset>
+                            <AbsDimension x="17" y="0"/>
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+                <Layers>
+                    <Layer level="ARTWORK">
+                        <!-- Placeholder text -->
+                        <FontString name="$parentInstructions" inherits="GameFontDisableSmall" justifyH="LEFT">
+                            <Color r="0.5" g="0.5" b="0.5"/>
+                            <Anchors>
+                                <Anchor point="TOPLEFT" relativeTo="$parent" relativePoint="TOPLEFT">
+                                    <Offset>
+                                        <AbsDimension x="22" y="0"/>
+                                    </Offset>
+                                </Anchor>
+                                <Anchor point="BOTTOMRIGHT" relativeTo="$parent" relativePoint="BOTTOMRIGHT">
+                                    <Offset>
+                                        <AbsDimension x="-20" y="0"/>
+                                    </Offset>
+                                </Anchor>
+                            </Anchors>
+                        </FontString>
+                    </Layer>
+                </Layers>
+                <Frames>
+                    <!-- Updated clear button implementation with empty textures -->
+                    <Button name="$parentClearButton">
+                        <Size>
+                            <AbsDimension x="17" y="17"/>
+                        </Size>
+                        <Anchors>
+                            <Anchor point="RIGHT" relativeTo="$parent" relativePoint="RIGHT">
+                                <Offset>
+                                    <AbsDimension x="-3" y="0"/>
+                                </Offset>
+                            </Anchor>
+                        </Anchors>
+                        <!-- Removed texture references, they'll be created in Lua -->
+                        <NormalTexture/>
+                        <PushedTexture/>
+                        <HighlightTexture file="Interface\Buttons\ButtonHilight-Square" alphaMode="ADD"/>
+                        <Scripts>
+                            <OnClick>
+                                CraftyPlusSearchBox:SetText("");
+                                CraftyPlusSearchBox:ClearFocus();
+                            </OnClick>
+                        </Scripts>
+                    </Button>
+                </Frames>
+                <Scripts>
+                    <!-- Add scripts to show/hide the clear button -->
+                    <OnEditFocusGained>
+                        -- Show the clear button when focused
+                        getglobal(this:GetName().."ClearButton"):Show();
+                        -- Gold border for focus
+                        this:SetBackdropBorderColor(1.0, 0.82, 0.0, 1.0);
+                    </OnEditFocusGained>
+                    <OnEditFocusLost>
+                        -- Hide the clear button when not focused and empty
+                        if (this:GetText() == "") then
+                            getglobal(this:GetName().."ClearButton"):Hide();
+                        end
+                        -- Reset border color
+                        this:SetBackdropBorderColor(0.3, 0.3, 0.3, 1.0);
+                    </OnEditFocusLost>
+                    <OnLoad>
+                        -- Hide the clear button initially
+                        getglobal(this:GetName().."ClearButton"):Hide();
+                    </OnLoad>
+                    <OnTextChanged>
+                        -- Show clear button if there's text, hide if empty
+                        if (this:GetText() ~= "") then
+                            getglobal(this:GetName().."ClearButton"):Show();
+                        else
+                            if (not this:HasFocus()) then
+                                getglobal(this:GetName().."ClearButton"):Hide();
+                            end
+                        end
+                    </OnTextChanged>
+                </Scripts>
+            </EditBox>
+            
+            <!-- Materials Button -->
+            <Button name="CraftyPlusMaterialsButton" inherits="CraftyPlusPfButtonTemplate">
+                <Anchors>
+                    <Anchor point="LEFT" relativeTo="CraftyPlusSearchBox" relativePoint="RIGHT">
+                        <Offset>
+                            <AbsDimension x="4" y="0"/>
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+                <Scripts>
+                    <OnLoad>
+                        -- CraftyPlusMaterialsButton:OnLoad
+                        -- Set button text to "Mats"
+                        local text = getglobal(this:GetName().."Text");
+                        if text then
+                            text:SetText("Mats");
+                            text:SetTextColor(1.0, 0.82, 0.0);
+                            -- Adjust font to match pfUI
+                            if pfUI and pfUI.font_default then
+                                text:SetFont(pfUI.font_default, 12, "OUTLINE");
+                            end
+                        end
+                    </OnLoad>
+                </Scripts>
+            </Button>
+            
+            <!-- Link Button -->
+            <Button name="CraftyPlusLinkButton" inherits="CraftyPlusPfButtonTemplate">
+                <Anchors>
+                    <Anchor point="LEFT" relativeTo="CraftyPlusMaterialsButton" relativePoint="RIGHT">
+                        <Offset>
+                            <AbsDimension x="2" y="0"/>
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+                <Scripts>
+                    <OnLoad>
+                        -- CraftyPlusLinkButton:OnLoad
+                        -- Set button text to "Link"
+                        local text = getglobal(this:GetName().."Text");
+                        if text then
+                            text:SetText("Link");
+                            text:SetTextColor(1.0, 0.82, 0.0);
+                            -- Adjust font to match pfUI
+                            if pfUI and pfUI.font_default then
+                                text:SetFont(pfUI.font_default, 12, "OUTLINE");
+                            end
+                        end
+                    </OnLoad>
+                </Scripts>
+            </Button>
+        </Frames>
+    </Frame>
+</Ui>

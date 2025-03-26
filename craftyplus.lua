@@ -1,13 +1,15 @@
 -- CraftyPlus.lua
+-- Enhanced profession window for vanilla WoW (1.12)
 
 --[[
-  CraftyPlus: Enhanced version of the Vanilla (1.12) crafting addon
-  originally by shirsig (https://github.com/shirsig/crafty).
+  CraftyPlus: Vanilla (1.12) crafting addon originally by shirsig (https://github.com/shirsig/crafty).
   This version includes:
-    1) Turtle WoW compatibility with more visible crafting lines
-    2) Right-click "favorite" fix
-    3) Preservation of scroll offset after favoriting an item
-    4) Split chat messaging for item links and reagents
+    1) Right-click "favorite" fix.
+    2) Preservation of scroll offset after favoriting an item so we don't jump back to top.
+    3) Split chat messaging:
+       - First message: the item link.
+       - Subsequent messages: the reagents (with "(cont.) " prefix when needed).
+    4) Modern pfUI-like styling with dark backgrounds and gold text
 --]]
 
 local craftyplus = CreateFrame'Frame'
@@ -157,170 +159,135 @@ end
 -- ADDON_LOADED: Setup the main frame and hooks
 -----------------------------------------------------------------------
 function craftyplus:ADDON_LOADED()
-	if arg1 ~= 'CraftyPlus' then
-		return
-	end
+    if arg1 ~= 'CraftyPlus' then
+        return
+    end
 
-	self.found = {}
+    self.found = {}
 
-	self:RegisterEvent'TRADE_SKILL_SHOW'
-	self:RegisterEvent'CRAFT_SHOW'
-	
-	-- Hook SetItemRef to allow SHIFT-clicking a name into the link popup
-	local origSetItemRef = SetItemRef
-	SetItemRef = function(...)
-		local popup = StaticPopup_FindVisible'CRAFTYPLUS_LINK'
-	    local _, _, playerName = strfind(unpack(arg), 'player:(.+)')
-	    if popup and IsShiftKeyDown() and playerName then
-	    	getglobal(popup:GetName()..'EditBox'):SetText(playerName)
-	    	return
-	    end
-	    return origSetItemRef(unpack(arg))
-	end
+    self:RegisterEvent'TRADE_SKILL_SHOW'
+    self:RegisterEvent'CRAFT_SHOW'
+    
+    -- Hook SetItemRef to allow SHIFT-clicking a name into the link popup
+    local origSetItemRef = SetItemRef
+    SetItemRef = function(...)
+        local popup = StaticPopup_FindVisible'CRAFTYPLUS_LINK'
+        local _, _, playerName = strfind(unpack(arg), 'player:(.+)')
+        if popup and IsShiftKeyDown() and playerName then
+            getglobal(popup:GetName()..'EditBox'):SetText(playerName)
+            return
+        end
+        return origSetItemRef(unpack(arg))
+    end
 
-	-------------------------------------------------------------------
-	-- Create the main search/filter frame
-	-------------------------------------------------------------------
-	self.frame = CreateFrame'Frame'
-	self.frame:Hide()
-	self.frame:SetPoint('CENTER', 'UIParent', 'CENTER', 0, 0)
-	self.frame:SetWidth(322)
-	self.frame:SetHeight(45)
-	self.frame:SetFrameStrata'MEDIUM'
-	self.frame:SetMovable(false)
-	self.frame:EnableMouse(true)
-	self.frame:SetBackdrop({
-		bgFile   = [[Interface\DialogFrame\UI-DialogBox-Background]], tile = true, tileSize = 32,
-		edgeFile = [[Interface\DialogFrame\UI-DialogBox-Border]], edgeSize = 20,
-		insets   = {left=5, right=6, top=6, bottom=5},
-	})
+    -- Get references to our XML-defined frames
+    self.frame = CraftyPlusFrame
+    self.frame.SearchBox = CraftyPlusSearchBox
+    self.frame.MaterialsButton = CraftyPlusMaterialsButton
+    self.frame.LinkButton = CraftyPlusLinkButton
+    self.frame.SearchBox.ClearButton = CraftyPlusSearchBoxClearButton  -- Store reference to clear button
 
-	-- Search box
-	local searchBox = CreateFrame('EditBox', nil, self.frame, 'InputBoxTemplate')
-	self.frame.SearchBox = searchBox
-	searchBox:SetTextInsets(16, 20, 0, 0)
-	searchBox:SetAutoFocus(false)
-	searchBox:SetWidth(184)
-	searchBox:SetHeight(20)
-	searchBox:SetPoint('LEFT', self.frame, 'LEFT', 17, 0)
-	searchBox:SetBackdropColor(TOOLTIP_DEFAULT_COLOR.r, TOOLTIP_DEFAULT_COLOR.g, TOOLTIP_DEFAULT_COLOR.b)
-	searchBox:SetBackdropBorderColor(TOOLTIP_DEFAULT_BACKGROUND_COLOR.r, TOOLTIP_DEFAULT_BACKGROUND_COLOR.g, TOOLTIP_DEFAULT_BACKGROUND_COLOR.b)
-	searchBox:SetScript('OnEnterPressed', function()
-		this:ClearFocus()
-	end)
-	do
-		local instructions = searchBox:CreateFontString(nil, 'ARTWORK')
-		instructions:SetPoint('TOPLEFT', searchBox, 'TOPLEFT', 16, 0)
-		instructions:SetPoint('BOTTOMRIGHT', searchBox, 'BOTTOMRIGHT', -20, 0)
-		instructions:SetJustifyH'LEFT'
-		instructions:SetFontObject(GameFontDisableSmall)
-		instructions:SetTextColor(.35, .35, .35)
-		instructions:SetText'Search'
+    -- Add search icon texture programmatically
+    local searchIcon = self.frame.SearchBox:CreateTexture("CraftyPlusSearchBoxSearchIcon", "OVERLAY")
+    searchIcon:SetTexture("Interface\\AddOns\\CraftyPlus\\icons\\UI-Searchbox-Icon")
+    searchIcon:SetPoint("LEFT", self.frame.SearchBox, "LEFT", 5, -2)
+    searchIcon:SetWidth(16)
+    searchIcon:SetHeight(16)
+    searchIcon:SetVertexColor(0.6, 0.6, 0.6)
 
-		local searchIcon = searchBox:CreateTexture(nil, 'OVERLAY')
-		searchIcon:SetTexture[[Interface\AddOns\CraftyPlus\UI-Searchbox-Icon]]
-		searchIcon:SetPoint('LEFT', 0, -2)
-		searchIcon:SetWidth(14)
-		searchIcon:SetHeight(14)
-		searchIcon:SetVertexColor(.6, .6, .6)
+    -- Add clear button texture programmatically
+    local clearButtonTex = CraftyPlusSearchBoxClearButton:CreateTexture("CraftyPlusSearchBoxClearButtonTexture", "ARTWORK")
+    clearButtonTex:SetTexture("Interface\\AddOns\\CraftyPlus\\icons\\ClearBroadcastIcon")
+    clearButtonTex:SetPoint("TOPLEFT", 0, 0)
+    clearButtonTex:SetWidth(17)
+    clearButtonTex:SetHeight(17)
+    clearButtonTex:SetAlpha(0.5)
+    CraftyPlusSearchBoxClearButton.tex = clearButtonTex
 
-		local clearButton = CreateFrame('Button', nil, searchBox)
-		clearButton:SetPoint('RIGHT', -3, 0)
-		clearButton:SetWidth(17)
-		clearButton:SetHeight(17)
-		do
-			local tex = clearButton:CreateTexture(nil, 'ARTWORK')
-			tex:SetTexture[[Interface\AddOns\CraftyPlus\ClearBroadcastIcon]]
-			tex:SetPoint('TOPLEFT', 0, 0)
-			tex:SetWidth(17)
-			tex:SetHeight(17)
-			tex:SetAlpha(.5)
-			clearButton.tex = tex
-		end
-		clearButton:SetScript('OnEnter', function()
-			this.tex:SetAlpha(1)
-		end)
-		clearButton:SetScript('OnLeave', function()
-			this.tex:SetAlpha(.5)
-		end)
-		clearButton:SetScript('OnMouseUp', function()
-			this.tex:SetPoint('TOPLEFT', 0, 0)
-		end)
-		clearButton:SetScript('OnMouseDown', function()
-			this.tex:SetPoint('TOPLEFT', 1, -1)
-		end)
-		clearButton:SetScript('OnClick', function()
-			PlaySound'igMainMenuOptionCheckBoxOn'
-			searchBox:SetText''
-			searchBox:ClearFocus()
-		end)
+    -- Set up instructions text
+    CraftyPlusSearchBoxInstructions:SetText("Search")
 
-		searchBox:SetScript('OnEditFocusGained', function()
-			this.focused = true
-			searchIcon:SetVertexColor(1, 1, 1)
-			clearButton:Show()
-		end)
-		searchBox:SetScript('OnEditFocusLost', function()
-			this.focused = false
-			if this:GetText() == '' then
-				searchIcon:SetVertexColor(.6, .6, .6)
-				clearButton:Hide()
-			end
-		end)
-		searchBox:SetScript('OnTextChanged', function()
-			if this:GetText() == '' then
-				instructions:Show()
-			else
-				instructions:Hide()
-			end
-			if this:GetText() == '' and not this.focused then
-				searchIcon:SetVertexColor(.6, .6, .6)
-				clearButton:Hide()
-			else
-				searchIcon:SetVertexColor(1, 1, 1)
-				clearButton:Show()
-			end
-			self:Search()
-		end)
-	end
+    -- Setup event handlers for search box
+    self.frame.SearchBox:SetScript('OnEnterPressed', function()
+        this:ClearFocus()
+    end)
 
-	-- Materials button
-	self.frame.MaterialsButton = CreateFrame('Button', nil, self.frame, 'UIPanelButtonTemplate')
-	self.frame.MaterialsButton:SetWidth(52)
-	self.frame.MaterialsButton:SetHeight(25)
-	self.frame.MaterialsButton:SetPoint('LEFT', searchBox, 'RIGHT', 4, 0)
-	self.frame.MaterialsButton:SetText'Mats'
-	self.frame.MaterialsButton:SetScript('OnClick', function()
-		self:State().materials = not self:State().materials
-		if self:State().materials then
-			this:LockHighlight()
-		else
-			this:UnlockHighlight()
-		end
+    self.frame.SearchBox:SetScript('OnEditFocusGained', function()
+        this.focused = true
+        CraftyPlusSearchBoxSearchIcon:SetVertexColor(1, 1, 1)
+        CraftyPlusSearchBoxClearButton:Show()
+    end)
+
+    self.frame.SearchBox:SetScript('OnEditFocusLost', function()
+        this.focused = false
+        if this:GetText() == '' then
+            CraftyPlusSearchBoxSearchIcon:SetVertexColor(.6, .6, .6)
+            CraftyPlusSearchBoxClearButton:Hide()
+        end
+    end)
+
+    self.frame.SearchBox:SetScript('OnTextChanged', function()
+        if this:GetText() == '' then
+            CraftyPlusSearchBoxInstructions:Show()
+        else
+            CraftyPlusSearchBoxInstructions:Hide()
+        end
+        if this:GetText() == '' and not this.focused then
+            CraftyPlusSearchBoxSearchIcon:SetVertexColor(.6, .6, .6)
+            CraftyPlusSearchBoxClearButton:Hide()
+        else
+            CraftyPlusSearchBoxSearchIcon:SetVertexColor(1, 1, 1)
+            CraftyPlusSearchBoxClearButton:Show()
+        end
+        craftyplus:Search()
+    end)
+
+    -- Clear button
+    CraftyPlusSearchBoxClearButton:SetScript('OnEnter', function()
+        CraftyPlusSearchBoxClearButtonTexture:SetAlpha(1)
+    end)
+    CraftyPlusSearchBoxClearButton:SetScript('OnLeave', function()
+        CraftyPlusSearchBoxClearButtonTexture:SetAlpha(.5)
+    end)
+    CraftyPlusSearchBoxClearButton:SetScript('OnMouseUp', function()
+        CraftyPlusSearchBoxClearButtonTexture:SetPoint('TOPLEFT', 0, 0)
+    end)
+    CraftyPlusSearchBoxClearButton:SetScript('OnMouseDown', function()
+        CraftyPlusSearchBoxClearButtonTexture:SetPoint('TOPLEFT', 1, -1)
+    end)
+    CraftyPlusSearchBoxClearButton:SetScript('OnClick', function()
+        PlaySound'igMainMenuOptionCheckBoxOn'
+        CraftyPlusSearchBox:SetText''
+        CraftyPlusSearchBox:ClearFocus()
+    end)
+
+    -- Materials button
+    self.frame.MaterialsButton:SetScript('OnClick', function()
+        self:State().materials = not self:State().materials
+        if self:State().materials then
+            this:LockHighlight()
+        else
+            this:UnlockHighlight()
+        end
         self:Search()
     end)
 
-	-- Link button
-	self.frame.LinkButton = CreateFrame('Button', nil, self.frame, 'UIPanelButtonTemplate')
-	self.frame.LinkButton:SetWidth(52)
-	self.frame.LinkButton:SetHeight(25)
-	self.frame.LinkButton:SetPoint('LEFT', self.frame.MaterialsButton, 'RIGHT', 2, 0)
-	self.frame.LinkButton:SetText'Link'
-	self.frame.LinkButton:RegisterForClicks('LeftButtonUp', 'RightButtonUp')
-	self.frame.LinkButton:SetScript('OnClick', function()
-		if StaticPopup_Visible'CRAFTYPLUS_LINK' then
-			StaticPopup_Hide'CRAFTYPLUS_LINK'
-		elseif arg1 == 'RightButton' then
-			StaticPopup_Show'CRAFTYPLUS_LINK'
-		end
+    -- Link button
+    self.frame.LinkButton:RegisterForClicks('LeftButtonUp', 'RightButtonUp')
+    self.frame.LinkButton:SetScript('OnClick', function()
+        if StaticPopup_Visible'CRAFTYPLUS_LINK' then
+            StaticPopup_Hide'CRAFTYPLUS_LINK'
+        elseif arg1 == 'RightButton' then
+            StaticPopup_Show'CRAFTYPLUS_LINK'
+        end
 
-		if arg1 == 'LeftButton' then
-			local channel = GetNumPartyMembers() == 0 and 'WHISPER' or 'PARTY'
-			if channel == 'PARTY' or ChatEdit_GetLastTellTarget(ChatFrameEditBox) ~= '' then
-				craftyplus:SendReagentMessage(channel, ChatEdit_GetLastTellTarget(ChatFrameEditBox))
-			end
-		end
-	end)
+        if arg1 == 'LeftButton' then
+            local channel = GetNumPartyMembers() == 0 and 'WHISPER' or 'PARTY'
+            if channel == 'PARTY' or ChatEdit_GetLastTellTarget(ChatFrameEditBox) ~= '' then
+                craftyplus:SendReagentMessage(channel, ChatEdit_GetLastTellTarget(ChatFrameEditBox))
+            end
+        end
+    end)
 end
 
 -----------------------------------------------------------------------
@@ -368,7 +335,7 @@ function craftyplus:CRAFT_SHOW()
                 button:SetScript('OnClick', function()
                     if arg1 == 'RightButton' then
                         -- Preserve current scroll offset so we don't jump back to top
-                        local offset      = FauxScrollFrame_GetOffset(getglobal(self.currentFrame.elements.Main))
+                        local offset      = FauxScrollFrame_GetOffset(getglobal(self.currentFrame.elements.Scroll))
                         local scrollValue = getglobal(self.currentFrame.elements.ScrollBar):GetValue()
 
                         local favorites, name = self:State().favorites, GetCraftInfo(this:GetID())
@@ -378,7 +345,7 @@ function craftyplus:CRAFT_SHOW()
                         end
 
                         -- Restore scroll offset
-                        FauxScrollFrame_SetOffset(getglobal(self.currentFrame.elements.Main), offset)
+                        FauxScrollFrame_SetOffset(getglobal(self.currentFrame.elements.Scroll), offset)
                         getglobal(self.currentFrame.elements.ScrollBar):SetValue(scrollValue)
                     else
                         -- Left-click -> original logic
@@ -429,7 +396,7 @@ function craftyplus:TRADE_SKILL_SHOW()
                 button:SetScript('OnClick', function()
                     if arg1 == 'RightButton' then
                         -- Preserve current scroll offset
-                        local offset      = FauxScrollFrame_GetOffset(getglobal(self.currentFrame.elements.Main))
+                        local offset      = FauxScrollFrame_GetOffset(getglobal(self.currentFrame.elements.Scroll))
                         local scrollValue = getglobal(self.currentFrame.elements.ScrollBar):GetValue()
 
                         local favorites, name = self:State().favorites, GetTradeSkillInfo(this:GetID())
@@ -439,7 +406,7 @@ function craftyplus:TRADE_SKILL_SHOW()
                         end
 
                         -- Restore scroll offset
-                        FauxScrollFrame_SetOffset(getglobal(self.currentFrame.elements.Main), offset)
+                        FauxScrollFrame_SetOffset(getglobal(self.currentFrame.elements.Scroll), offset)
                         getglobal(self.currentFrame.elements.ScrollBar):SetValue(scrollValue)
                     else
                         -- Left-click -> original logic
@@ -718,9 +685,7 @@ function craftyplus:BuildList()
 			}
 		elseif skillType == 'header' and not isExpanded then
 			-- Expand unexpanded headers
-			if self.mode == TRADE then
-				ExpandTradeSkillSubClass(i)
-			end
+			ExpandTradeSkillSubClass(i)
 		end
 	end
 

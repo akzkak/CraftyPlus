@@ -6,4 +6,5 @@
 ## LoadOnDemand: 1
 ## LoadWith: Blizzard_TradeSkillUI, Blizzard_CraftUI
 ## SavedVariablesPerCharacter: craftyplus_favorites
+craftyplus.xml
 craftyplus.lua
