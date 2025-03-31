@@ -1,6 +1,9 @@
 -- CraftyPlus.lua
 -- Enhanced profession window for vanilla WoW (1.12)
 
+-- Global debug toggle - set to false to disable debug messages
+craftyplus_debug = false
+
 --[[
   CraftyPlus: Vanilla (1.12) crafting addon originally by shirsig (https://github.com/shirsig/crafty).
   This version includes:
@@ -10,6 +13,7 @@
        - First message: the item link.
        - Subsequent messages: the reagents (with "(cont.) " prefix when needed).
     4) Modern pfUI-like styling with dark backgrounds and gold text
+    5) Gem activation button for Jewelcrafting to solve trade window gem issues
 --]]
 
 local craftyplus = CreateFrame'Frame'
@@ -185,6 +189,7 @@ function craftyplus:ADDON_LOADED()
     self.frame.SearchBox = CraftyPlusSearchBox
     self.frame.MaterialsButton = CraftyPlusMaterialsButton
     self.frame.LinkButton = CraftyPlusLinkButton
+    self.frame.ActivateButton = CraftyPlusActivateButton
     self.frame.SearchBox.ClearButton = CraftyPlusSearchBoxClearButton  -- Store reference to clear button
 
     -- Add search icon texture programmatically
@@ -287,6 +292,11 @@ function craftyplus:ADDON_LOADED()
                 craftyplus:SendReagentMessage(channel, ChatEdit_GetLastTellTarget(ChatFrameEditBox))
             end
         end
+    end)
+    
+    -- Activate button
+    self.frame.ActivateButton:SetScript('OnClick', function()
+        self:ActivateGem()
     end)
 end
 
@@ -447,6 +457,21 @@ function craftyplus:Show()
 	else
 		self.frame.MaterialsButton:UnlockHighlight()
 	end
+    
+    -- Check if current profession is Jewelcrafting
+    local profession
+    if self.mode == TRADE then
+        profession = GetTradeSkillLine()
+    elseif self.mode == CRAFT then
+        profession = GetCraftSkillLine(1)
+    end
+    
+    -- Only show activate button for Jewelcrafting
+    if profession == "Jewelcrafting" then
+        self.frame.ActivateButton:Show()
+    else
+        self.frame.ActivateButton:Hide()
+    end
 
 	self.frame.SearchBox:SetText(self:State().searchText)
 	self:Search()
@@ -791,7 +816,7 @@ function craftyplus:SendReagentMessage(channel, who)
     end
 
     -- First message: send the item link with the " Required Reagents:" suffix.
-    SendChatMessage(itemLink .. " Required Reagents:", channel,
+    SendChatMessage(itemLink .. " required reagents:", channel,
         GetDefaultLanguage("player"), who)
 
     -- Build the reagent lines. Each reagent will be concatenated as "reagentLinkxneeded".
@@ -836,6 +861,223 @@ function craftyplus:SendReagentMessage(channel, who)
     for _, line in ipairs(messages) do
         SendChatMessage(line, channel, GetDefaultLanguage("player"), who)
     end
+end
+
+-----------------------------------------------------------------------
+-- ActivateGem: Finds and activates the selected gem
+-- Checks inventory first before closing any trade window
+-- Auto-targets party member if in a 2-person party
+-----------------------------------------------------------------------
+function craftyplus:ActivateGem()
+    -- Debug: Function entry
+    if craftyplus_debug then
+        DEFAULT_CHAT_FRAME:AddMessage("CraftyPlus DEBUG: ActivateGem function called", 0, 0.7, 1)
+    end
+    
+    -- Step 1: Get the selected item
+    local index = (self.mode == CRAFT and GetCraftSelectionIndex() or GetTradeSkillSelectionIndex())
+    if index == 0 then
+        DEFAULT_CHAT_FRAME:AddMessage("CraftyPlus: No item selected.", 1, 0.5, 0)
+        return
+    end
+    
+    -- Debug: Selected item index
+    if craftyplus_debug then
+        DEFAULT_CHAT_FRAME:AddMessage("CraftyPlus DEBUG: Selected item index: " .. index, 0, 0.7, 1)
+    end
+    
+    local itemLink = (self.mode == CRAFT and GetCraftItemLink(index) or GetTradeSkillItemLink(index))
+    if not itemLink then
+        DEFAULT_CHAT_FRAME:AddMessage("CraftyPlus: Couldn't get item information.", 1, 0.5, 0)
+        return
+    end
+    
+    -- Debug: Item link
+    if craftyplus_debug then
+        DEFAULT_CHAT_FRAME:AddMessage("CraftyPlus DEBUG: Item link: " .. itemLink, 0, 0.7, 1)
+    end
+    
+    -- Extract item name from link
+    local _, _, itemName = string.find(itemLink, "%[(.-)%]")
+    if not itemName then
+        DEFAULT_CHAT_FRAME:AddMessage("CraftyPlus: Couldn't parse item name.", 1, 0.5, 0)
+        return
+    end
+    
+    -- Debug: Extracted item name
+    if craftyplus_debug then
+        DEFAULT_CHAT_FRAME:AddMessage("CraftyPlus DEBUG: Looking for item: " .. itemName, 0, 0.7, 1)
+    end
+    
+    -- First, search bags to see if we have the item before closing any trade windows
+    if craftyplus_debug then
+        DEFAULT_CHAT_FRAME:AddMessage("CraftyPlus DEBUG: Scanning bags for " .. itemName, 0, 0.7, 1)
+    end
+    
+    local found = false
+    local foundBag, foundSlot = nil, nil
+    
+    for bag = 0, 4 do
+        local slots = GetContainerNumSlots(bag)
+        if craftyplus_debug then
+            DEFAULT_CHAT_FRAME:AddMessage("CraftyPlus DEBUG: Checking bag " .. bag .. " with " .. slots .. " slots", 0, 0.7, 1)
+        end
+        
+        for slot = 1, slots do
+            local link = GetContainerItemLink(bag, slot)
+            if link and string.find(link, itemName) then
+                -- Debug: Found the item
+                if craftyplus_debug then
+                    DEFAULT_CHAT_FRAME:AddMessage("CraftyPlus DEBUG: Found item in bag " .. bag .. ", slot " .. slot, 0, 0.7, 1)
+                end
+                found = true
+                foundBag, foundSlot = bag, slot
+                break
+            end
+        end
+        if found then break end
+    end
+    
+    if not found then
+        DEFAULT_CHAT_FRAME:AddMessage("CraftyPlus: Item not found in bags. Craft it first.", 1, 0.5, 0)
+        return
+    end
+    
+    -- Continue with activation if the gem was found
+    self:ContinueGemActivation(itemName, foundBag, foundSlot)
+end
+
+-----------------------------------------------------------------------
+-- ContinueGemActivation: Continues the gem activation process after 
+-- finding or crafting the gem
+-----------------------------------------------------------------------
+function craftyplus:ContinueGemActivation(itemName, foundBag, foundSlot)
+    -- Step 3: Check for a valid target
+    local targetExists = UnitExists("target")
+    local targetName = nil
+    local playerName = UnitName("player")
+    
+    -- If no target, check if we're in a party with exactly one other person
+    if not targetExists and GetNumPartyMembers() == 1 then
+        targetName = UnitName("party1")
+        if targetName then
+            if craftyplus_debug then
+                DEFAULT_CHAT_FRAME:AddMessage("CraftyPlus DEBUG: No target, but found party member: " .. targetName, 0, 0.7, 1)
+            end
+            TargetByName(targetName, true) -- The second parameter true means exact match
+            targetExists = UnitExists("target")
+            
+            if not targetExists then
+                DEFAULT_CHAT_FRAME:AddMessage("CraftyPlus: Could not target party member. Please target your trade partner manually.", 1, 0.5, 0)
+                return
+            end
+        else
+            DEFAULT_CHAT_FRAME:AddMessage("CraftyPlus: No target selected and couldn't find party member. Please target your trade partner.", 1, 0.5, 0)
+            return
+        end
+    elseif not targetExists then
+        DEFAULT_CHAT_FRAME:AddMessage("CraftyPlus: No target selected. Please target your trade partner.", 1, 0.5, 0)
+        return
+    else
+        targetName = UnitName("target")
+        
+        -- Check if target is the player themselves
+        if targetName == playerName then
+            DEFAULT_CHAT_FRAME:AddMessage("CraftyPlus: You can't trade with yourself. Please target your trade partner.", 1, 0.5, 0)
+            return
+        end
+    end
+    
+    -- Step 4: Now that all checks passed, handle the trade window if it's open
+    local tradeWasOpen = false
+    
+    if TradeFrame and TradeFrame:IsVisible() then
+        tradeWasOpen = true
+        if craftyplus_debug then
+            DEFAULT_CHAT_FRAME:AddMessage("CraftyPlus DEBUG: Trade window is open with " .. targetName, 0, 0.7, 1)
+            DEFAULT_CHAT_FRAME:AddMessage("CraftyPlus DEBUG: Temporarily closing trade window", 0, 0.7, 1)
+        end
+        
+        -- Send explanation message to party member
+        if GetNumPartyMembers() == 1 then
+            -- If in a party with one other person, use party chat
+            SendChatMessage("CraftyPlus: Temporarily closing trade to activate gem, will reopen in a moment!", "PARTY")
+        else
+            -- Otherwise send whisper to target
+            SendChatMessage("CraftyPlus: Temporarily closing trade to activate gem, will reopen in a moment!", "WHISPER", nil, targetName)
+        end
+        
+        -- Use proper WoW API function to close the trade window
+        CloseTrade()
+    else
+        if craftyplus_debug then
+            DEFAULT_CHAT_FRAME:AddMessage("CraftyPlus DEBUG: Trade window not detected", 0, 0.7, 1)
+        end
+    end
+    
+    -- Step 5: Activate the gem
+    if craftyplus_debug then
+        DEFAULT_CHAT_FRAME:AddMessage("CraftyPlus DEBUG: Using item at bag " .. foundBag .. ", slot " .. foundSlot, 0, 0.7, 1)
+    end
+    UseContainerItem(foundBag, foundSlot)
+    
+    -- Visual feedback on the button
+    if self.frame.ActivateButton then
+        -- Create a green flash effect
+        local flash = self.frame.ActivateButton:CreateTexture("CraftyPlusActivateFlash", "OVERLAY")
+        flash:SetTexture("Interface\\Buttons\\UI-Panel-Button-Highlight")
+        flash:SetBlendMode("ADD")
+        flash:SetAlpha(0.7)
+        flash:SetAllPoints(self.frame.ActivateButton)
+        
+        -- Create a fading animation
+        local fadeFrame = CreateFrame("Frame")
+        fadeFrame.elapsed = 0
+        fadeFrame.duration = 0.8
+        fadeFrame:SetScript("OnUpdate", function()
+            this.elapsed = this.elapsed + arg1
+            if this.elapsed < this.duration then
+                local alpha = 0.7 * (1 - (this.elapsed / this.duration))
+                flash:SetAlpha(alpha)
+            else
+                flash:Hide()
+                flash:SetParent(nil)
+                this:SetScript("OnUpdate", nil)
+            end
+        end)
+    end
+    
+    DEFAULT_CHAT_FRAME:AddMessage("CraftyPlus: Gem activated successfully!", 0, 1, 0)
+    
+    -- Step 6: Open or reopen trade window after a short delay
+    local reopenFrame = CreateFrame("Frame")
+    reopenFrame.elapsed = 0
+    reopenFrame.timeout = 0.5 -- Half second delay
+    
+    reopenFrame:SetScript("OnUpdate", function()
+        this.elapsed = this.elapsed + arg1
+        if this.elapsed > this.timeout then
+            if UnitExists("target") then
+                -- Get current target name (could have changed)
+                local currentTargetName = UnitName("target")
+                
+                -- Check if target is still valid (not self)
+                if currentTargetName == playerName then
+                    DEFAULT_CHAT_FRAME:AddMessage("CraftyPlus: Can't trade with yourself. Please target your trade partner.", 1, 0.5, 0)
+                else
+                    if tradeWasOpen then
+                        DEFAULT_CHAT_FRAME:AddMessage("CraftyPlus: Reopening trade window with " .. currentTargetName, 0, 1, 0)
+                    else
+                        DEFAULT_CHAT_FRAME:AddMessage("CraftyPlus: Opening trade window with " .. currentTargetName, 0, 1, 0)
+                    end
+                    InitiateTrade("target")
+                end
+            else
+                DEFAULT_CHAT_FRAME:AddMessage("CraftyPlus: Lost target. Please target your trade partner again.", 1, 0.5, 0)
+            end
+            this:SetScript("OnUpdate", nil)
+        end
+    end)
 end
 
 -----------------------------------------------------------------------

@@ -283,6 +283,35 @@
                     </OnLoad>
                 </Scripts>
             </Button>
+            
+			<!-- Gem Helper Button -->
+			<Button name="CraftyPlusActivateButton" inherits="CraftyPlusPfButtonTemplate">
+				<Size>
+					<AbsDimension x="75" y="20"/>
+				</Size>
+				<Anchors>
+					<Anchor point="BOTTOM" relativeTo="CraftyPlusMaterialsButton" relativePoint="TOP">
+						<Offset>
+							<AbsDimension x="28" y="2"/>
+						</Offset>
+					</Anchor>
+				</Anchors>
+				<Scripts>
+					<OnLoad>
+						-- CraftyPlusActivateButton:OnLoad
+						-- Set button text to "Gem Helper"
+						local text = getglobal(this:GetName().."Text");
+						if text then
+							text:SetText("Gem Helper");
+							text:SetTextColor(1.0, 0.82, 0.0);
+							-- Adjust font to match pfUI
+							if pfUI and pfUI.font_default then
+								text:SetFont(pfUI.font_default, 12, "OUTLINE");
+							end
+						end
+					</OnLoad>
+				</Scripts>
+			</Button>
         </Frames>
     </Frame>
 </Ui>
