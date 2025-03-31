@@ -49,5 +49,3 @@ The Gem Helper button will:
 
 - **Original Author**: [shirsig](https://github.com/shirsig/crafty)  
   - The original Crafty was designed for 1.12 (Vanilla) and has been adapted for Turtle WoW.  
-
-Happy Crafting!
